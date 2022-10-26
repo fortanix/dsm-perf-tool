@@ -16,22 +16,29 @@ in test-setup subcommand to fail.
 # Running
 
 Usage:
-  dsm-perf-tool [command]
 
+```
+  dsm-perf-tool [command]
+```
 Available Commands:
+
+```
   completion  Generates bash completion scripts
   get-version Call version API in a loop
   help        Help about any command
   load-test   A collection of load tests for various types of operations.
   test-setup  Setup a test account useful for testing.
+```
 
 Flags:
+```
   -h, --help                               help for dsm-perf-tool
       --idle-connection-timeout duration   Idle connection timeout, 0 means no timeout (default behavior)
       --insecure                           Do not validate server's TLS certificate
   -p, --port uint16                        DSM server port (default 443)
       --request-timeout duration           HTTP request timeout, 0 means no timeout (default 1m0s)
   -s, --server string                      DSM server host name (default "sdkms.test.fortanix.com")
+```
 
 # Contributing
 
