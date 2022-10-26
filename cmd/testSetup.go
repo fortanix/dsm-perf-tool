@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	DEFAULT_USER          = "testuser@fortanix.com"
-	DEFAULT_USER_PASSWORD = "password123"
+	DEFAULT_USER          = ""
+	DEFAULT_USER_PASSWORD = ""
 )
 
 var createTestUser bool
