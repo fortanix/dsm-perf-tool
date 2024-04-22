@@ -1,0 +1,6 @@
+sdkms-perf-tool
+*.env
+*.json
+*.log
+*.csv
+local*.sh
