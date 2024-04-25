@@ -1,7 +1,6 @@
 # Build
 
-First, make sure you have a recent version of the Go compiler, i.e. 1.16
-or newer.
+First, make sure you have a recent version of the Go compiler, this tool requires go version >= `1.18`.
 
 Then issue the following commands to build and install this tool:
 
