@@ -1,6 +1,6 @@
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
-github.com/fortanix/sdkms-client-go v0.2.1 h1:gT0QxwIgcHxZli1vt+Cfuo4nPVskCg0qh1yQ02OiTPw=
-github.com/fortanix/sdkms-client-go v0.2.1/go.mod h1:7df+XH9h8S/MDmF64sHKmDCBmrYqIi/8Ix72PVnRqfQ=
+github.com/fortanix/sdkms-client-go v0.4.0 h1:5cKiFJ4rzc69mhsVVI5Ma5ynr/k5vhvws0yfzfIro/k=
+github.com/fortanix/sdkms-client-go v0.4.0/go.mod h1:gjylIGX+6poVSe+JkbNsLTvseLd+rLjvcGFgXpW56Lo=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
