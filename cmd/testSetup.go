@@ -140,9 +140,11 @@ func testSetup() {
 		ObjType: convertObjectType(objectTypeAES),
 		KeySize: someUint32(256),
 		Fpe: &sdkms.FpeOptions{
-			Radix:     16,
-			MinLength: 16,
-			MaxLength: 16 * 1024,
+			Basic: &sdkms.FpeOptionsBasic{
+				Radix:     16,
+				MinLength: 16,
+				MaxLength: 16 * 1024,
+			},
 		},
 	})
 
@@ -155,9 +157,10 @@ func testSetup() {
 		KeySize: someUint32(256),
 		KeyOps:  someKeyOps(sdkms.KeyOperationsEncrypt | sdkms.KeyOperationsDecrypt | sdkms.KeyOperationsWrapkey | sdkms.KeyOperationsUnwrapkey | sdkms.KeyOperationsHighvolume),
 		Fpe: &sdkms.FpeOptions{
-			Radix:     16,
-			MinLength: 16,
-			MaxLength: 16 * 1024,
+			Basic: &sdkms.FpeOptionsBasic{
+				Radix:     16,
+				MinLength: 16,
+				MaxLength: 16 * 1024},
 		},
 	})
 	checkErr("create high-volume AES key", err)
@@ -169,9 +172,10 @@ func testSetup() {
 		ObjType: convertObjectType(objectTypeAES),
 		KeySize: someUint32(192),
 		Fpe: &sdkms.FpeOptions{
-			Radix:     16,
-			MinLength: 16,
-			MaxLength: 16 * 1024,
+			Basic: &sdkms.FpeOptionsBasic{
+				Radix:     16,
+				MinLength: 16,
+				MaxLength: 16 * 1024},
 		},
 	})
 	checkErr("create AES key (192 bits)", err)
@@ -183,9 +187,10 @@ func testSetup() {
 		KeySize: someUint32(192),
 		KeyOps:  someKeyOps(sdkms.KeyOperationsEncrypt | sdkms.KeyOperationsDecrypt | sdkms.KeyOperationsWrapkey | sdkms.KeyOperationsUnwrapkey | sdkms.KeyOperationsHighvolume),
 		Fpe: &sdkms.FpeOptions{
-			Radix:     16,
-			MinLength: 16,
-			MaxLength: 16 * 1024,
+			Basic: &sdkms.FpeOptionsBasic{
+				Radix:     16,
+				MinLength: 16,
+				MaxLength: 16 * 1024},
 		},
 	})
 	checkErr("create high-volume AES key (192 bits)", err)
