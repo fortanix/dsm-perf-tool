@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -35,6 +36,9 @@ func init() {
 }
 
 func asymmetricCryptoLoadTest() {
+	// get basic info of the given sobject
+	key := GetSobject(&keyID)
+
 	setup := func(client *sdkms.Client) (interface{}, error) {
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
@@ -56,6 +60,8 @@ func asymmetricCryptoLoadTest() {
 		}
 		return asymmetricEncrypt(client)
 	}
+
+	// construct test name
 	name := "asymmetric encryption"
 	if decryptOpt {
 		name = "asymmetric decryption"
@@ -63,6 +69,9 @@ func asymmetricCryptoLoadTest() {
 	if createSession {
 		name += " with session"
 	}
+	name = fmt.Sprintf("%s %d %s", key.ObjType, *key.KeySize, name)
+
+	// start the load test
 	loadTest(name, setup, test, cleanup)
 }
 

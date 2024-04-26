@@ -7,8 +7,10 @@
 package cmd
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"net/http"
@@ -165,4 +167,20 @@ func Max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// GetSobject retrieves a sobject through SDKMS client.
+// It takes a keyID as a parameter and returns a pointer to a Sobject.
+// If the keyID is empty, it will return an error.
+// If an error occurs during the retrieval process, the function will log a fatal error and exit.
+func GetSobject(kid *string) *sdkms.Sobject {
+	client := sdkmsClient()
+	client.Auth = sdkms.APIKey(apiKey)
+	key, err := client.GetSobject(context.Background(), nil, sdkms.SobjectDescriptor{
+		Kid: kid,
+	})
+	if err != nil {
+		log.Fatalf("Fatal error: %v\n", err)
+	}
+	return key
 }

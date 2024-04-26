@@ -61,7 +61,7 @@ func loadTestGenerateKey() {
 		d, p, err := generateKey(client)
 		return nil, d, p, err
 	}
-	name := fmt.Sprintf("generate %v keys", keyType)
+	name := fmt.Sprintf("generate %v key", keyType)
 	if keyType == objectTypeAES || keyType == objectTypeRSA {
 		name += fmt.Sprintf(" (%v bits)", keySize)
 	}

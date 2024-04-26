@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -38,6 +39,9 @@ func init() {
 }
 
 func signVerifyLoadTest() {
+	// get basic info of the given sobject
+	key := GetSobject(&signKeyID)
+
 	setup := func(client *sdkms.Client) (interface{}, error) {
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
@@ -59,6 +63,8 @@ func signVerifyLoadTest() {
 		}
 		return sign(client)
 	}
+
+	// construct test name
 	name := "sign"
 	if verifyOpt {
 		name = "verify"
@@ -66,6 +72,8 @@ func signVerifyLoadTest() {
 	if createSession {
 		name += " with session"
 	}
+	name = fmt.Sprintf("%s %d %s", key.ObjType, *key.KeySize, name)
+
 	loadTest(name, setup, test, cleanup)
 }
 
