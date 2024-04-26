@@ -1,0 +1,277 @@
+# This file contains all available configuration options
+# with their default values.
+
+# options for analysis running
+run:
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 5m
+
+  # include test files or not, default is true
+  tests: true
+
+  # If set, we pass it to "go list -mod={option}". From "go help modules":
+  # If invoked with -mod=readonly, the go command is disallowed from the implicit
+  # automatic updating of go.mod described above. Instead, it fails when any changes
+  # to go.mod are needed. This setting is most useful to check that go.mod does
+  # not need updates, such as in a continuous integration and testing system.
+  # If invoked with -mod=vendor, the go command assumes that the vendor
+  # directory holds the correct copies of dependencies and ignores
+  # the dependency descriptions in go.mod.
+  #
+  # Allowed values: readonly|vendor|mod
+  # Default: ""
+  modules-download-mode: readonly
+
+  # Allow multiple parallel golangci-lint instances running.
+  # If false, golangci-lint acquires file lock on start.
+  # Default: false
+  allow-parallel-runners: true
+
+  skip-files: []
+
+
+# output configuration options
+output:
+  # Sort results by the order defined in `sort-order`.
+  # Default: false
+  sort-results: true
+
+# all available settings of specific linters
+linters-settings:
+  revive:
+    rules:
+      - name: unused-parameter
+        disabled: true
+
+  gofmt:
+    # Apply the rewrite rules to the source before reformatting.
+    # https://pkg.go.dev/cmd/gofmt
+    # Default: []
+    rewrite-rules:
+      - pattern: 'interface{}'
+        replacement: 'any'
+      - pattern: 'a[b:len(a)]'
+        replacement: 'a[b:]'
+
+  gocyclo:
+    # Minimal code complexity to report.
+    # Default: 30 (but we recommend 10-20)
+    min-complexity: 10
+
+  depguard:
+    # Rules to apply.
+    #
+    # Variables:
+    # - File Variables
+    #   you can still use and exclamation mark ! in front of a variable to say not to use it.
+    #   Example !$test will match any file that is not a go test file.
+    #
+    #   `$all` - matches all go files
+    #   `$test` - matches all go test files
+    #
+    # - Package Variables
+    #
+    #  `$gostd` - matches all of go's standard library (Pulled from `GOROOT`)
+    #
+    # Default: Only allow $gostd in all files.
+    rules:
+      # Name of a rule.
+      main:
+        files:
+          - "$all"
+          - "!$test"
+        deny:
+          - pkg: "github.com/sirupsen/logrus"
+            desc: 'use "app/pkg/logger"'
+          - pkg: "github.com/golang/mock"
+            desc: 'use "github.com/stretchr/testify/mock" and "github.com/vektra/mockery"'
+          - pkg: "github.com/stretchr/testify"
+            desc: "test assert package not allowed"
+      test:
+        files:
+          - "$test"
+        deny:
+          - pkg: "github.com/golang/mock"
+            desc: 'use "github.com/stretchr/testify/mock" and "github.com/vektra/mockery"'
+
+  gomnd:
+    ignored-functions: strconv\..*,time\..*,make,math\..*,strings\..*
+    ignored-numbers: 1,2,3,10,100,1000,10000
+
+  gosimple:
+    # Sxxxx checks in https://staticcheck.io/docs/configuration/options/#checks
+    # Default: ["*"]
+    checks: [ "all" ]
+
+  lll:
+    # Max line length, lines longer will be reported.
+    # '\t' is counted as 1 character by default, and can be changed with the tab-width option.
+    # Default: 120.
+    line-length: 120
+    # Tab width in spaces.
+    # Default: 1
+    tab-width: 1
+
+  misspell:
+    # Correct spellings using locale preferences for US or UK.
+    # Setting locale to US will correct the British spelling of 'colour' to 'color'.
+    # Default is to use a neutral variety of English.
+    locale: US
+
+  staticcheck:
+    # SAxxxx checks in https://staticcheck.io/docs/configuration/options/#checks
+    # Default: ["*"]
+    checks: ["all"]
+
+  exhaustive:
+    # Presence of "default" case in switch statements satisfies exhaustiveness,
+    # even if all enum members are not listed.
+    # Default: false
+    default-signifies-exhaustive: true
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+
+  nlreturn:
+    block-size: 3
+
+  tagliatelle:
+    # Check the struct tag name case.
+    case:
+      rules:
+        # Any struct tag type can be used.
+        # Support string case: `camel`, `pascal`, `kebab`, `snake`, `upperSnake`, `goCamel`, `goPascal`, `goKebab`, `goSnake`, `upper`, `lower`, `header`
+        json: snake
+        yaml: snake
+
+linters:
+  # Disable all linters.
+  # Default: false
+  disable-all: true
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - cyclop
+    - decorder
+    - depguard
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - execinquery
+    - exhaustive
+    # - exhaustruct
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gci
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gochecksumtype
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    - goerr113
+    - gofmt
+    - gofumpt
+    - goheader
+    - goimports
+    - gomnd
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - gosmopolitan
+    - govet
+    - grouper
+    - importas
+    - inamedparam
+    - ineffassign
+    - interfacebloat
+    - intrange
+    - ireturn
+    - lll
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nolintlint
+    - nonamedreturns
+    - nosprintfhostport
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - predeclared
+    - promlinter
+    - protogetter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - staticcheck
+    - stylecheck
+    - tagalign
+    - tagliatelle
+    - tenv
+    - testableexamples
+    - testifylint
+    - testpackage
+    - thelper
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - varnamelen
+    - wastedassign
+    - whitespace
+    - wrapcheck
+    - wsl
+    - zerologlint
+
+  fast: false
+
+issues:
+  exclude-rules:
+    - path: '.*_test\.go'
+      linters: 
+        - dupl
+        - errcheck
+        - funlen
+        - gochecknoglobals
+        - gocritic
+        - gocyclo
+        - godot
+        - gosec
+        - nosnakecase
