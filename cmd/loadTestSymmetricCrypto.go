@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -40,10 +41,13 @@ func init() {
 	symmetricCryptoLoadTestCmd.PersistentFlags().StringVar(&keyID, "kid", "", "Key ID to use for symmetric crypto")
 	symmetricCryptoLoadTestCmd.PersistentFlags().BoolVar(&decryptOpt, "decrypt", false, "Perform decryption instead of encryption")
 	symmetricCryptoLoadTestCmd.PersistentFlags().StringVar(&cipherModeStr, "mode", "CBC", "Cipher mode used for encryption/decryption, support: CBC, GCM, FPE")
+	cipherMode = validateCipherMode(cipherModeStr)
 }
 
 func symmetricCryptoLoadTest() {
-	cipherMode = validateCipherMode(cipherModeStr)
+	// get basic info of the given sobject
+	key := GetSobject(&keyID)
+
 	setup := func(client *sdkms.Client) (interface{}, error) {
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
@@ -65,6 +69,8 @@ func symmetricCryptoLoadTest() {
 		}
 		return encrypt(client)
 	}
+
+	// construct test name
 	name := "symmetric encryption"
 	if decryptOpt {
 		name = "symmetric decryption"
@@ -73,6 +79,9 @@ func symmetricCryptoLoadTest() {
 	if createSession {
 		name += " with session"
 	}
+	name = fmt.Sprintf("%s %d %s", key.ObjType, *key.KeySize, name)
+
+	// start the load test
 	loadTest(name, setup, test, cleanup)
 }
 

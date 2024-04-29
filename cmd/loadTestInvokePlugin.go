@@ -10,8 +10,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -39,11 +39,18 @@ func init() {
 }
 
 func invokePluginLoadTest() {
-	input := json.RawMessage(pluginInput)
-	_, err := json.Marshal(&input)
+	// Get the given plugin from the server
+	client := sdkmsClient()
+	client.Auth = sdkms.APIKey(apiKey)
+	plugin, err := client.GetPlugin(context.Background(), pluginID)
 	if err != nil {
-		fmt.Printf("plugin input must be valid JSON: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Fatal error: %v\n", err)
+	}
+
+	input := json.RawMessage(pluginInput)
+	_, err = json.Marshal(&input)
+	if err != nil {
+		log.Fatalf("Plugin input must be valid JSON: %v\n", err)
 	}
 
 	setup := func(client *sdkms.Client) (interface{}, error) {
@@ -62,10 +69,14 @@ func invokePluginLoadTest() {
 	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
 		return invokePlugin(client)
 	}
-	name := "plugin invocation"
+
+	// construct test name
+	name := fmt.Sprintf("invoke plugin '%s'", plugin.Name)
 	if createSession {
 		name += " with session"
 	}
+
+	// start the load test
 	loadTest(name, setup, test, cleanup)
 }
 
