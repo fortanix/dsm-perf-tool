@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: get rid of global variables, tracking issue: #16
 var keyType = objectTypeAES
 var keySize uint32
 
@@ -46,19 +47,34 @@ func loadTestGenerateKey() {
 			keySize = 2048
 		}
 	}
-	setup := func(client *sdkms.Client) (interface{}, error) {
-		_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
-		return nil, err
+	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
+		if createSession {
+			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
+			if err != nil {
+				return nil, err
+			}
+		}
+		client.Auth = sdkms.APIKey(apiKey)
+
+		// Create one example key to fill the test config
+		if testConfig.Sobject != nil {
+			key, _, _, err := generateKey(client)
+			if err != nil {
+				return nil, err
+			}
+			testConfig.Sobject = key
+		}
+		return nil, nil
 	}
 	cleanup := func(client *sdkms.Client) {
 		client.TerminateSession(context.Background())
 	}
-	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
+	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
 		// Don't want to generate a key in warmup, this is OK because we ensure TLS is established in setup() by authenticating
 		if stage == warmupStage {
 			return nil, 0, "", nil
 		}
-		d, p, err := generateKey(client)
+		_, d, p, err := generateKey(client)
 		return nil, d, p, err
 	}
 	name := fmt.Sprintf("generate %v key", keyType)
@@ -68,7 +84,7 @@ func loadTestGenerateKey() {
 	loadTest(name, setup, test, cleanup)
 }
 
-func generateKey(client *sdkms.Client) (time.Duration, profilingDataStr, error) {
+func generateKey(client *sdkms.Client) (*sdkms.Sobject, time.Duration, profilingMetricStr, error) {
 	req := sdkms.SobjectRequest{
 		Transient:     someBool(true),
 		ObjType:       convertObjectType(keyType),
@@ -76,16 +92,16 @@ func generateKey(client *sdkms.Client) (time.Duration, profilingDataStr, error) 
 		EllipticCurve: ellipticCurveFor(keyType),
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
-	_, err := client.CreateSobject(ctx, req)
+	key, err := client.CreateSobject(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
-	return d, p, err
+	return key, d, p, err
 }
 
 func someBool(x bool) *bool       { return &x }

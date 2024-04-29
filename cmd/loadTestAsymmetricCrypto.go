@@ -39,7 +39,10 @@ func asymmetricCryptoLoadTest() {
 	// get basic info of the given sobject
 	key := GetSobject(&keyID)
 
-	setup := func(client *sdkms.Client) (interface{}, error) {
+	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
+		if testConfig.Sobject != nil {
+			testConfig.Sobject = key
+		}
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
 			return nil, err
@@ -52,7 +55,7 @@ func asymmetricCryptoLoadTest() {
 			client.TerminateSession(context.Background())
 		}
 	}
-	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
+	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
 		if er, ok := arg.(*sdkms.EncryptResponse); decryptOpt && ok {
 			_, d, p, err := asymmetricDecrypt(client, *er)
 			// return the encrypt response so we can decrypt in the next iteration
@@ -75,26 +78,26 @@ func asymmetricCryptoLoadTest() {
 	loadTest(name, setup, test, cleanup)
 }
 
-func asymmetricEncrypt(client *sdkms.Client) (*sdkms.EncryptResponse, time.Duration, profilingDataStr, error) {
+func asymmetricEncrypt(client *sdkms.Client) (*sdkms.EncryptResponse, time.Duration, profilingMetricStr, error) {
 	req := sdkms.EncryptRequest{
 		Key:   sdkms.SobjectByID(keyID),
 		Alg:   sdkms.AlgorithmRsa,
 		Plain: []byte(ASYM_EXAMPLE_DATA),
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.Encrypt(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }
 
-func asymmetricDecrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.DecryptResponse, time.Duration, profilingDataStr, error) {
+func asymmetricDecrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.DecryptResponse, time.Duration, profilingMetricStr, error) {
 	req := sdkms.DecryptRequest{
 		Key:    sdkms.SobjectByID(keyID),
 		Alg:    someAlgorithm(sdkms.AlgorithmRsa),
@@ -103,14 +106,14 @@ func asymmetricDecrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.De
 		Tag:    c.Tag,
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.Decrypt(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }

@@ -7,8 +7,8 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: get rid of global variables, tracking issue: #16
 var queriesPerSecond uint
 var connections uint
 var warmupDuration time.Duration
@@ -31,6 +32,8 @@ var loadTestCmd = &cobra.Command{
 	Long:    "A collection of load tests for various types of operations.",
 }
 
+const PRINT_QPS_INTERVAL = 5 * time.Second
+
 func init() {
 	rootCmd.AddCommand(loadTestCmd)
 
@@ -44,57 +47,48 @@ func init() {
 }
 
 type loadTestStage int
-type profilingDataStr string
-
-// profilingData is delta metrics of each step in back-end of one API Call
-// The unit of all fields are ns
-type profilingData struct {
-	InQueue                 uint64                    `json:"in_queue"`
-	ParseRequest            uint64                    `json:"parse_request"`
-	SessionLookup           uint64                    `json:"session_lookup"`
-	ValidateInput           uint64                    `json:"validate_input"`
-	CheckAccess             uint64                    `json:"check_access"`
-	Operate                 uint64                    `json:"operate"`
-	DbFlush                 uint64                    `json:"db_flush"`
-	Total                   uint64                    `json:"total"`
-	AdditionalProfilingData []additionalProfilingData `json:"additional_profiling,omitempty"`
-}
-
-type additionalProfilingData struct {
-	Action     string                    `json:"action"`
-	TookNs     uint64                    `json:"took_ns"`
-	SubActions []additionalProfilingData `json:"sub_actions,omitempty"`
-}
-
-type profilingDataArr []profilingData
 
 const (
 	warmupStage loadTestStage = iota + 1
 	testStage
 )
 
-type setupFunc func(client *sdkms.Client) (interface{}, error)
-type testFunc func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error)
+type setupFunc func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error)
+type testFunc func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error)
 type cleanupFunc func(client *sdkms.Client)
 
 func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) {
-	fmt.Printf("      Load test: %v\n", name)
-	fmt.Printf("         Server: %v:%v\n", serverName, serverPort)
-	fmt.Printf("     Target QPS: %v\n", queriesPerSecond)
-	fmt.Printf("    Connections: %v\n", connections)
-	fmt.Printf("  Test Duration: %v\n", testDuration)
-	fmt.Printf("Warmup Duration: %v\n", warmupDuration)
-	fmt.Println()
-	type testResult struct {
+	testTime := time.Now()
+
+	log.Printf("Load test:       %v\n", name)
+	log.Printf("Server:          %v:%v\n", serverName, serverPort)
+	log.Printf("Target QPS:      %v\n", queriesPerSecond)
+	log.Printf("Connections:     %v\n", connections)
+	log.Printf("Test Duration:   %v\n", testDuration)
+	log.Printf("Warmup Duration: %v\n\n", warmupDuration)
+
+	testConfig := TestConfig{
+		TestName:       name,
+		ServerName:     serverName,
+		ServerPort:     serverPort,
+		VerifyTls:      !insecureTLS,
+		Connections:    connections,
+		CreateSession:  createSession,
+		WarmupDuration: warmupDuration,
+		TestDuration:   testDuration,
+		TargetQPS:      queriesPerSecond,
+	}
+
+	type testMetric struct {
 		t time.Time
 		d time.Duration
-		p profilingDataStr
+		p profilingMetricStr
 		s loadTestStage
 	}
 	ticker := time.NewTicker(time.Duration(warmupDuration.Nanoseconds() / int64(connections)))
 	start := make(chan struct{})
 	end := make(chan struct{})
-	result := make(chan testResult, 1000) // buffered channel just in case
+	result := make(chan testMetric, 1000) // buffered channel just in case
 	var ready, finished sync.WaitGroup
 	var wg1 sync.WaitGroup
 
@@ -105,10 +99,10 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 				if stage == warmupStage {
 					log.Fatalf("Fatal error: %v\n", err)
 				} else {
-					fmt.Printf("Error: %v\n", err)
+					log.Printf("Error: %v\n", err)
 				}
 			} else {
-				result <- testResult{t, d, p, stage}
+				result <- testMetric{t, d, p, stage}
 			}
 			return arg
 		}
@@ -119,7 +113,7 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 			defer wg1.Done()
 
 			client := sdkmsClient()
-			arg, err := setup(&client)
+			arg, err := setup(&client, &testConfig)
 			if err != nil {
 				log.Fatalf("Fatal error: %v\n", err)
 			}
@@ -145,20 +139,34 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 	wg2.Add(2)
 	var warmups, tests []time.Duration
 	var lastTick time.Time
-	var profilingDataStrArr []profilingDataStr
+	var profilingMetricStrArr []profilingMetricStr
+
+	var printQpsWg sync.WaitGroup
 	go func() {
 		defer wg2.Done()
-
+		var lastPrintQpsTick time.Time
+		lastQueryNum := len(tests)
 		for r := range result {
 			if r.s == warmupStage {
 				warmups = append(warmups, r.d)
+				// use last warmup ticket as start point
+				lastPrintQpsTick = r.t
 			} else {
 				tests = append(tests, r.d)
+				if r.t.After(lastPrintQpsTick.Add(PRINT_QPS_INTERVAL)) {
+					lastPrintQpsTick = r.t
+					currentQueryNum := len(tests)
+					printQpsWg.Add(1)
+					go func() {
+						defer printQpsWg.Done()
+						log.Printf("Last %s QPS: %v\n", PRINT_QPS_INTERVAL, float64(currentQueryNum-lastQueryNum)/PRINT_QPS_INTERVAL.Seconds())
+						lastQueryNum = currentQueryNum
+					}()
+				}
 				if r.p != "" {
-					profilingDataStrArr = append(profilingDataStrArr, r.p)
+					profilingMetricStrArr = append(profilingMetricStrArr, r.p)
 				}
 			}
-
 			lastTick = r.t
 		}
 	}()
@@ -186,22 +194,47 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 	close(result)
 	wg2.Wait()
 	ticker.Stop()
+	printQpsWg.Wait()
 
 	sendDuration := lastTick.Sub(t0)
 	testDuration := t1.Sub(t0)
 
-	fmt.Printf("        Warmup: %v queries, %v\n", len(warmups), summarizeTimings(warmups))
-	fmt.Printf("          Test: %v queries, %v\n", len(tests), summarizeTimings(tests))
-	fmt.Printf(" Test duration: %v (%0.2f QPS)\n", testDuration, float64(len(tests))/testDuration.Seconds())
-	fmt.Printf(" Send duration: %v (%0.2f QPS)\n", sendDuration, float64(len(tests))/sendDuration.Seconds())
-	fmt.Printf("Profiling data: %v examples\n", len(profilingDataStrArr))
+	testResult := TestResult{
+		Warmup:             StatisticFromDurations(warmups, warmupDuration),
+		Test:               StatisticFromDurations(tests, testDuration),
+		ActualTestDuration: testDuration,
+		SendDuration:       sendDuration,
+		ProfilingResults:   nil,
+	}
 
-	if len(profilingDataStrArr) != 0 {
-		dataArr := parseProfilingDataStrArr(profilingDataStrArr)
-		summarizeProfilingData(dataArr)
+	if len(profilingMetricStrArr) != 0 {
+		dataArr := parseProfilingMetricStrArr(profilingMetricStrArr)
+		testResult.ProfilingResults = getProfilingMetrics(dataArr)
 		if storeProfilingData {
-			saveProfilingDataToCSV(dataArr)
+			saveProfilingMetricsToCSV(dataArr)
 		}
 	}
-	fmt.Print("\n\n")
+
+	testSummary := &TestSummary{
+		TestTime: testTime.Format(time.RFC3339),
+		Config:   &testConfig,
+		Result:   &testResult,
+	}
+
+	switch outputFormat {
+	case Plain:
+		err := testSummary.WritePlain(os.Stdout)
+		if err != nil {
+			log.Fatalf("failed to write test summary in plain: %v\n", err)
+		}
+	case JSON:
+		err := testSummary.WriteJson(os.Stdout)
+		if err != nil {
+			log.Fatalf("failed to write test summary in json: %v\n", err)
+		}
+	case YAML:
+		log.Fatalf("write test summary in yaml is not yet supported\n")
+	default:
+		log.Fatalf("unreachable: unacceptable output format option: %v\n", outputFormat)
+	}
 }

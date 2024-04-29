@@ -9,7 +9,6 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,8 +17,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -62,7 +59,7 @@ func setupCloseHandler(onClose func()) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		fmt.Println("\r- Ctrl+C detected")
+		log.Println("\r- Ctrl+C detected")
 		onClose()
 		os.Exit(0)
 	}()
@@ -189,103 +186,16 @@ func GetSobject(kid *string) *sdkms.Sobject {
 	return key
 }
 
-func summarizeProfilingData(dataArr profilingDataArr) {
-	var inQueueData stats.Float64Data
-	var parseRequestData stats.Float64Data
-	var sessionLookupData stats.Float64Data
-	var validateInputData stats.Float64Data
-	var checkAccessData stats.Float64Data
-	var operateData stats.Float64Data
-	var dbFlushData stats.Float64Data
-	var totalData stats.Float64Data
-	additionalDataArr := make(map[string]stats.Float64Data)
-	actionNameMaxLen := len("SessionLookup")
-	for _, data := range dataArr {
-		inQueueData = append(inQueueData, float64(data.InQueue))
-		parseRequestData = append(parseRequestData, float64(data.ParseRequest))
-		sessionLookupData = append(sessionLookupData, float64(data.SessionLookup))
-		validateInputData = append(validateInputData, float64(data.ValidateInput))
-		checkAccessData = append(checkAccessData, float64(data.CheckAccess))
-		operateData = append(operateData, float64(data.Operate))
-		dbFlushData = append(dbFlushData, float64(data.DbFlush))
-		totalData = append(totalData, float64(data.Total))
-		actionNameMaxLen = Max(actionNameMaxLen, processAdditionalProfilingData(&data.AdditionalProfilingData, &additionalDataArr, actionNameMaxLen, ""))
-	}
-	fmt.Printf("%s: %s\n", StrPad("InQueue", actionNameMaxLen, " ", "LEFT"), summarizeData(inQueueData))
-	fmt.Printf("%s: %s\n", StrPad("ParseRequest", actionNameMaxLen, " ", "LEFT"), summarizeData(parseRequestData))
-	fmt.Printf("%s: %s\n", StrPad("SessionLookup", actionNameMaxLen, " ", "LEFT"), summarizeData(sessionLookupData))
-	fmt.Printf("%s: %s\n", StrPad("ValidateInput", actionNameMaxLen, " ", "LEFT"), summarizeData(validateInputData))
-	fmt.Printf("%s: %s\n", StrPad("CheckAccess", actionNameMaxLen, " ", "LEFT"), summarizeData(checkAccessData))
-	fmt.Printf("%s: %s\n", StrPad("Operate", actionNameMaxLen, " ", "LEFT"), summarizeData(operateData))
-	fmt.Printf("%s: %s\n", StrPad("DbFlush", actionNameMaxLen, " ", "LEFT"), summarizeData(dbFlushData))
-	fmt.Printf("%s: %s\n", StrPad("Total", actionNameMaxLen, " ", "LEFT"), summarizeData(totalData))
-	for actionName, timeArr := range additionalDataArr {
-		fmt.Printf("%s: %s\n", StrPad(actionName, actionNameMaxLen, " ", "LEFT"), summarizeData(timeArr))
-	}
-}
+type httpHeaderKey string
 
-func processAdditionalProfilingData(dataArr *[]additionalProfilingData, additionalDataArr *map[string]stats.Float64Data, actionNameMaxLen int, parentActionName string) int {
-	for _, customProfilingData := range *dataArr {
-		actionName := parentActionName + "/" + customProfilingData.Action
-		(*additionalDataArr)[actionName] = append((*additionalDataArr)[actionName], float64(customProfilingData.TookNs))
-		actionNameMaxLen = Max(actionNameMaxLen, len(actionName))
-		actionNameMaxLen = Max(actionNameMaxLen, processAdditionalProfilingData(&customProfilingData.SubActions, additionalDataArr, actionNameMaxLen, actionName))
-	}
-	return actionNameMaxLen
-}
+const (
+	responseHeaderKey httpHeaderKey = "ResponseHeader"
+)
 
-func (dataArr profilingDataArr) getCSVHeaders() (header []string) {
-	e := reflect.ValueOf(&dataArr[0]).Elem()
-	for i := 0; i < e.NumField(); i++ {
-		varName := e.Type().Field(i).Name
-		header = append(header, varName)
-	}
-	return header
-}
-
-func (dataArr profilingDataArr) getCSVValues() (values [][]string) {
-	for _, data := range dataArr {
-		values = append(values, []string{
-			strconv.FormatUint(data.InQueue, 10),
-			strconv.FormatUint(data.ParseRequest, 10),
-			strconv.FormatUint(data.SessionLookup, 10),
-			strconv.FormatUint(data.ValidateInput, 10),
-			strconv.FormatUint(data.CheckAccess, 10),
-			strconv.FormatUint(data.Operate, 10),
-			strconv.FormatUint(data.DbFlush, 10),
-			strconv.FormatUint(data.Total, 10),
-		})
-	}
-	return values
-}
-
-func saveProfilingDataToCSV(dataArr profilingDataArr) {
-	csvFile, err := os.CreateTemp(".", "profilingData.*.csv")
+func toJsonStr(v any) string {
+	val, err := json.Marshal(v)
 	if err != nil {
 		log.Fatalf("Fatal error: %v\n", err)
 	}
-	w := csv.NewWriter(csvFile)
-	headers := dataArr.getCSVHeaders()
-	values := dataArr.getCSVValues()
-	if err := w.Write(headers); err != nil {
-		log.Fatalf("Fatal error: %v\n", err)
-	}
-	if err := w.WriteAll(values); err != nil {
-		log.Fatalf("Fatal error: %v\n", err)
-	}
-
-	fmt.Println("Saved profiling data to:", csvFile.Name())
-}
-
-func parseProfilingDataStrArr(profilingDataStrArr []profilingDataStr) profilingDataArr {
-	var dataArr profilingDataArr
-	for _, profilingDataStr := range profilingDataStrArr {
-		var profilingData profilingData
-		err := json.Unmarshal([]byte(string(profilingDataStr)), &profilingData)
-		if err != nil {
-			log.Fatalf("Fatal error: %v\n", err)
-		}
-		dataArr = append(dataArr, profilingData)
-	}
-	return dataArr
+	return string(val)
 }

@@ -19,6 +19,7 @@ import (
 
 const SYM_EXAMPLE_DATA string = "0123456789ABCDEF"
 
+// TODO: get rid of global variables, tracking issue: #16
 var keyID string
 var decryptOpt bool
 var cipherModeStr string
@@ -48,7 +49,10 @@ func symmetricCryptoLoadTest() {
 	// get basic info of the given sobject
 	key := GetSobject(&keyID)
 
-	setup := func(client *sdkms.Client) (interface{}, error) {
+	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
+		if testConfig.Sobject == nil {
+			testConfig.Sobject = key
+		}
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
 			return nil, err
@@ -61,7 +65,7 @@ func symmetricCryptoLoadTest() {
 			client.TerminateSession(context.Background())
 		}
 	}
-	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
+	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
 		if er, ok := arg.(*sdkms.EncryptResponse); decryptOpt && ok {
 			_, d, p, err := decrypt(client, *er)
 			// return the encrypt response so we can decrypt in the next iteration
@@ -85,7 +89,7 @@ func symmetricCryptoLoadTest() {
 	loadTest(name, setup, test, cleanup)
 }
 
-func encrypt(client *sdkms.Client) (*sdkms.EncryptResponse, time.Duration, profilingDataStr, error) {
+func encrypt(client *sdkms.Client) (*sdkms.EncryptResponse, time.Duration, profilingMetricStr, error) {
 	req := sdkms.EncryptRequest{
 		Key:    sdkms.SobjectByID(keyID),
 		Alg:    sdkms.AlgorithmAes,
@@ -94,19 +98,19 @@ func encrypt(client *sdkms.Client) (*sdkms.EncryptResponse, time.Duration, profi
 		TagLen: tagLenFor(cipherMode),
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.Encrypt(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }
 
-func decrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.DecryptResponse, time.Duration, profilingDataStr, error) {
+func decrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.DecryptResponse, time.Duration, profilingMetricStr, error) {
 	req := sdkms.DecryptRequest{
 		Key:    sdkms.SobjectByID(keyID),
 		Alg:    someAlgorithm(sdkms.AlgorithmAes),
@@ -116,14 +120,14 @@ func decrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.DecryptRespo
 		Tag:    c.Tag,
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.Decrypt(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }

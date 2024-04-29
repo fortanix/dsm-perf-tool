@@ -8,13 +8,13 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/spf13/cobra"
 )
 
+// TODO: get rid of global variables, tracking issue: #16
 var getVersionCount uint
 var newConnectionPerRequest bool
 var getVersionDelay time.Duration
@@ -45,7 +45,7 @@ func getVersion() {
 	}
 	log.Printf("%v version: %v (%v)", serverName, v.Version, v.ServerMode)
 	var durations []time.Duration
-	printSummary := func() { fmt.Printf("%v\n", summarizeTimings(durations)) }
+	printSummary := func() { log.Printf("%v\n", summarizeTimings(durations)) }
 	setupCloseHandler(printSummary)
 	var count uint
 	for {
