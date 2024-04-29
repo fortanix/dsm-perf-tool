@@ -6,8 +6,16 @@
 
 package main
 
-import "github.com/fortanix/dsm-perf-tool/cmd"
+import (
+	"fmt"
+	"os"
+
+	"github.com/fortanix/dsm-perf-tool/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	if err := cmd.ExecuteCmd(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

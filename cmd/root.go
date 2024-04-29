@@ -7,12 +7,16 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 )
+
+const defaultServerName = "sdkms.test.fortanix.com"
+const defaultServerPort = uint16(443)
+const defaultTlsNotVerify = false
+const defaultRequestTimeout = 60 * time.Second
+const defaultIdleConnectionTimeout = 0 * time.Second
 
 var serverName string
 var serverPort uint16
@@ -26,18 +30,15 @@ var rootCmd = &cobra.Command{
 	Long:  `DSM performance tool`,
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+func ExecuteCmd() error {
+	return rootCmd.Execute()
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&serverName, "server", "s", "sdkms.test.fortanix.com", "DSM server host name")
-	rootCmd.PersistentFlags().Uint16VarP(&serverPort, "port", "p", 443, "DSM server port")
-	rootCmd.PersistentFlags().BoolVar(&insecureTLS, "insecure", false, "Do not validate server's TLS certificate")
-	rootCmd.PersistentFlags().DurationVar(&requestTimeout, "request-timeout", 60*time.Second, "HTTP request timeout, 0 means no timeout")
-	rootCmd.PersistentFlags().DurationVar(&idleConnectionTimeout, "idle-connection-timeout", 0, "Idle connection timeout, 0 means no timeout (default behavior)")
+	rootCmd.PersistentFlags().StringVarP(&serverName, "server", "s", defaultServerName, "DSM server host name")
+	rootCmd.PersistentFlags().Uint16VarP(&serverPort, "port", "p", defaultServerPort, "DSM server port")
+	rootCmd.PersistentFlags().BoolVar(&insecureTLS, "insecure", defaultTlsNotVerify, "Do not validate server's TLS certificate")
+	rootCmd.PersistentFlags().DurationVar(&requestTimeout, "request-timeout", defaultRequestTimeout, "HTTP request timeout, 0 means no timeout")
+	rootCmd.PersistentFlags().DurationVar(&idleConnectionTimeout, "idle-connection-timeout", defaultIdleConnectionTimeout, "Idle connection timeout, 0 means no timeout (default behavior)")
 
 }
