@@ -14,7 +14,7 @@ in test-setup subcommand to fail.
 
 # Running
 
-Get how usage message by:
+Display help message by:
 
 ```shell
 ./dsm-perf-tool --help
@@ -23,19 +23,20 @@ Get how usage message by:
 ## Example steps to run a performance test
 
 1. Test setup
-    You need to run `./dsm-perf-tool test-setup` to create groups, keys and plugins before run a performance test:
-    - Create a account: `./dsm-perf-tool --server sdkms.test.fortanix.com test-setup --create-test-user --test-user dsm-perf-1@fortanix.com --test-user-pwd testuse1_password | tee test.env`
+    You need to run `./dsm-perf-tool test-setup` to create groups, keys and plugins before running a performance test:
+    - Create an account: `./dsm-perf-tool --server sdkms.test.fortanix.com test-setup --create-test-user --test-user dsm-perf-1@fortanix.com --test-user-pwd testuse1_password | tee test.env`
     - Use an existing account: `./dsm-perf-tool --server sdkms.test.fortanix.com test-setup --test-user dsm-perf-1@fortanix.com --test-user-pwd testuse1_password | tee test.env`
     
     Note:
     - This command may takes ~10 seconds.
     - `| tee test.env` is used for print and save output (multiple lines of `export XXX=abc`) to a file which could be sourced later.
     - Please update `sdkms.test.fortanix.com` to the hostname or ip address to the server you want to target.
-    - You could add `--insecure` option to ignore self-signed certificate on remote host.
-    - You could add `--port 123456` option to change port (default value is `443`).
+    - You could add option:
+      - `--insecure`  to ignore self-signed certificate on remote host.
+      - `--port 123456` to change port (default value is `443`).
 
 2. Run a performance test
-    Once you run the test setup and got a env file, such as `test.env`.
+    Once you run the test setup and got an env file, such as `test.env`.
     You could start to use environment variables in the env file to run some performance test.
     
     Here is one example of running AES CBC decryption test:
