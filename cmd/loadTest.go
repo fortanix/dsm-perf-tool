@@ -32,7 +32,7 @@ var loadTestCmd = &cobra.Command{
 	Long:    "A collection of load tests for various types of operations.",
 }
 
-const PRINT_QPS_INTERVAL = 5 * time.Second
+const QPS_PRINT_INTERVAL = 5 * time.Second
 
 func init() {
 	rootCmd.AddCommand(loadTestCmd)
@@ -153,13 +153,13 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 				lastPrintQpsTick = r.t
 			} else {
 				tests = append(tests, r.d)
-				if r.t.After(lastPrintQpsTick.Add(PRINT_QPS_INTERVAL)) {
+				if r.t.After(lastPrintQpsTick.Add(QPS_PRINT_INTERVAL)) {
 					lastPrintQpsTick = r.t
 					currentQueryNum := len(tests)
 					printQpsWg.Add(1)
 					go func() {
 						defer printQpsWg.Done()
-						log.Printf("Last %s QPS: %v\n", PRINT_QPS_INTERVAL, float64(currentQueryNum-lastQueryNum)/PRINT_QPS_INTERVAL.Seconds())
+						log.Printf("Last %s QPS: %v\n", QPS_PRINT_INTERVAL, float64(currentQueryNum-lastQueryNum)/QPS_PRINT_INTERVAL.Seconds())
 						lastQueryNum = currentQueryNum
 					}()
 				}
@@ -232,6 +232,7 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 		if err != nil {
 			log.Fatalf("failed to write test summary in json: %v\n", err)
 		}
+	// TODO: See issue: #19
 	case YAML:
 		log.Fatalf("write test summary in yaml is not yet supported\n")
 	default:
