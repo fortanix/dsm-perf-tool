@@ -29,19 +29,19 @@ func init() {
 }
 
 func versionLoadTest() {
-	setup := func(client *sdkms.Client) (interface{}, error) {
+	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
 		return nil, nil
 	}
 	cleanup := func(client *sdkms.Client) {}
-	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
-		ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
+		ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 		t0 := time.Now()
 		_, err := client.Version(ctx)
 		d := time.Since(t0)
 
-		header := ctx.Value("ResponseHeader").(http.Header)
-		p := profilingDataStr(header.Get("Profiling-Data"))
+		header := ctx.Value(responseHeaderKey).(http.Header)
+		p := profilingMetricStr(header.Get("Profiling-Data"))
 
 		return nil, d, p, err
 	}

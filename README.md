@@ -14,30 +14,66 @@ in test-setup subcommand to fail.
 
 # Running
 
-Usage:
+Display help message by:
 
-```
-  dsm-perf-tool [command]
-```
-Available Commands:
-
-```
-  completion  Generates bash completion scripts
-  get-version Call version API in a loop
-  help        Help about any command
-  load-test   A collection of load tests for various types of operations.
-  test-setup  Setup a test account useful for testing.
+```shell
+./dsm-perf-tool --help
 ```
 
-Flags:
-```
-  -h, --help                               help for dsm-perf-tool
-      --idle-connection-timeout duration   Idle connection timeout, 0 means no timeout (default behavior)
-      --insecure                           Do not validate server's TLS certificate
-  -p, --port uint16                        DSM server port (default 443)
-      --request-timeout duration           HTTP request timeout, 0 means no timeout (default 1m0s)
-  -s, --server string                      DSM server host name (default "sdkms.test.fortanix.com")
-```
+## Example steps to run a performance test
+
+1. Test setup
+    You need to run `./dsm-perf-tool test-setup` to create groups, keys and plugins before running a performance test:
+    - Create an account: `./dsm-perf-tool --server sdkms.test.fortanix.com test-setup --create-test-user --test-user dsm-perf-1@fortanix.com --test-user-pwd testuse1_password | tee test.env`
+    - Use an existing account: `./dsm-perf-tool --server sdkms.test.fortanix.com test-setup --test-user dsm-perf-1@fortanix.com --test-user-pwd testuse1_password | tee test.env`
+    
+    Note:
+    - This command may takes ~10 seconds.
+    - `| tee test.env` is used for print and save output (multiple lines of `export XXX=abc`) to a file which could be sourced later.
+    - Please update `sdkms.test.fortanix.com` to the hostname or ip address to the server you want to target.
+    - You could add option:
+      - `--insecure`  to ignore self-signed certificate on remote host.
+      - `--port 123456` to change port (default value is `443`).
+
+2. Run a performance test
+    Once you run the test setup and got an env file, such as `test.env`.
+    You could start to use environment variables in the env file to run some performance test.
+    
+    Here is one example of running AES CBC decryption test:
+    ```shell
+    source test.env && \
+    ./dsm-perf-tool --server sdkms.test.fortanix.com load-test --api-key $TEST_API_KEY --connections 5 --create-session --duration 10s --qps 2000  --warmup 5s symmetric-crypto --decrypt --mode CBC --kid $TEST_AES_KEY_ID
+    ```
+    Explanation:
+    ```shell
+    source test.env;  # load environment variables in env file
+    ./dsm-perf-tool --server sdkms.test.fortanix.com \  # Specify remote server host name
+      load-test \
+      --api-key $TEST_API_KEY \  # App API key
+      --connections 5 \          # Concurrent connections will be created
+      --create-session \         # Will create session for each connection
+      --duration 10s \           # Test duration value is a golang time string
+      --qps 2000 \               # Target QPS, you could set this to a very big value if you want to test max QPS
+      --warmup 5s \              # Warmup happened before test
+      symmetric-crypto \
+      --decrypt \                # Add this option will test decryption instead of encryption by default
+      --mode CBC \
+      --kid $TEST_AES_KEY_ID     # AES Key UUID, you could use $TEST_HIVOL_AES_KEY_ID to test against high volume key
+    ```
+
+    You could add `--output-format json` to print test result in JSON format.
+    
+    Since test result is printed in stdout and logs are printed to stderr. You could redirect the test result to a file.
+
+    ```shell
+    source test.env && \
+    ./dsm-perf-tool --server sdkms.test.fortanix.com load-test --api-key $TEST_API_KEY --connections 5 --create-session --duration 10s --qps 2000  --warmup 5s symmetric-crypto --decrypt --mode CBC --kid $TEST_AES_KEY_ID | tee res.json
+    ```
+
+## Note
+
+- All logs will are printed to stderr.
+- Test summary will be printed to stdout.
 
 # Contributing
 

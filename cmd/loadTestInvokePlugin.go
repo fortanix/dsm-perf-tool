@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: get rid of global variables, tracking issue: #16
 var pluginID string
 var pluginInput string
 
@@ -53,7 +54,13 @@ func invokePluginLoadTest() {
 		log.Fatalf("Plugin input must be valid JSON: %v\n", err)
 	}
 
-	setup := func(client *sdkms.Client) (interface{}, error) {
+	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
+		if testConfig.Plugin != nil {
+			testConfig.Plugin = plugin
+		}
+		if testConfig.PluginInput != nil {
+			testConfig.PluginInput = &input
+		}
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
 			return nil, err
@@ -66,7 +73,7 @@ func invokePluginLoadTest() {
 			client.TerminateSession(context.Background())
 		}
 	}
-	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
+	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
 		return invokePlugin(client)
 	}
 
@@ -80,17 +87,17 @@ func invokePluginLoadTest() {
 	loadTest(name, setup, test, cleanup)
 }
 
-func invokePlugin(client *sdkms.Client) (*sdkms.PluginOutput, time.Duration, profilingDataStr, error) {
+func invokePlugin(client *sdkms.Client) (*sdkms.PluginOutput, time.Duration, profilingMetricStr, error) {
 	input := json.RawMessage(pluginInput)
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.InvokePlugin(ctx, pluginID, &input)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }

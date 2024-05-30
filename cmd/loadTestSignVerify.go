@@ -18,6 +18,7 @@ import (
 
 const SIGN_EXAMPLE_DATA string = "0123456789abcdef"
 
+// TODO: get rid of global variables, tracking issue: #16
 var signKeyID string
 var verifyOpt bool
 
@@ -42,7 +43,10 @@ func signVerifyLoadTest() {
 	// get basic info of the given sobject
 	key := GetSobject(&signKeyID)
 
-	setup := func(client *sdkms.Client) (interface{}, error) {
+	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
+		if testConfig.Sobject != nil {
+			testConfig.Sobject = key
+		}
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
 			return nil, err
@@ -55,7 +59,7 @@ func signVerifyLoadTest() {
 			client.TerminateSession(context.Background())
 		}
 	}
-	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingDataStr, error) {
+	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
 		if signResp, ok := arg.(*sdkms.SignResponse); verifyOpt && ok {
 			_, d, p, err := verify(client, *signResp)
 			// return the sign response so we can verify in the next iteration
@@ -77,26 +81,26 @@ func signVerifyLoadTest() {
 	loadTest(name, setup, test, cleanup)
 }
 
-func sign(client *sdkms.Client) (*sdkms.SignResponse, time.Duration, profilingDataStr, error) {
+func sign(client *sdkms.Client) (*sdkms.SignResponse, time.Duration, profilingMetricStr, error) {
 	req := sdkms.SignRequest{
 		Data:    someBlob([]byte(SIGN_EXAMPLE_DATA)),
 		HashAlg: sdkms.DigestAlgorithmSha256,
 		Key:     sdkms.SobjectByID(signKeyID),
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.Sign(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }
 
-func verify(client *sdkms.Client, sr sdkms.SignResponse) (*sdkms.VerifyResponse, time.Duration, profilingDataStr, error) {
+func verify(client *sdkms.Client, sr sdkms.SignResponse) (*sdkms.VerifyResponse, time.Duration, profilingMetricStr, error) {
 	req := sdkms.VerifyRequest{
 		Signature: sr.Signature,
 		Key:       sdkms.SobjectByID(signKeyID),
@@ -104,14 +108,14 @@ func verify(client *sdkms.Client, sr sdkms.SignResponse) (*sdkms.VerifyResponse,
 		Data:      someBlob([]byte(SIGN_EXAMPLE_DATA)),
 	}
 
-	ctx := context.WithValue(context.Background(), "ResponseHeader", http.Header{})
+	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 	t0 := time.Now()
 	res, err := client.Verify(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value("ResponseHeader").(http.Header)
-	p := profilingDataStr(header.Get("Profiling-Data"))
+	header := ctx.Value(responseHeaderKey).(http.Header)
+	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
 }

@@ -43,8 +43,8 @@ func init() {
 	rootCmd.AddCommand(testSetupCmd)
 
 	testSetupCmd.PersistentFlags().BoolVar(&createTestUser, "create-test-user", false, fmt.Sprintf("Create test user `%v`", testUserEmail))
-	testSetupCmd.PersistentFlags().StringVar(&testUserEmail, "test-user", DEFAULT_USER, "User name for creating account")
-	testSetupCmd.PersistentFlags().StringVar(&testUserPassword, "test-user-pwd", DEFAULT_USER_PASSWORD, "User password for creating account")
+	testSetupCmd.PersistentFlags().StringVar(&testUserEmail, "test-user", DEFAULT_USER, "User name for login/creating account")
+	testSetupCmd.PersistentFlags().StringVar(&testUserPassword, "test-user-pwd", DEFAULT_USER_PASSWORD, "User password for login/creating account")
 }
 
 func testSetup() {
@@ -59,8 +59,9 @@ func testSetup() {
 	// create test user if requested
 	if createTestUser {
 		_, err := client.SignupUser(ctx, sdkms.SignupRequest{
-			UserEmail:    testUserEmail,
-			UserPassword: testUserPassword,
+			UserEmail:         testUserEmail,
+			UserPassword:      testUserPassword,
+			RecaptchaResponse: someString("dummy recaptcha"),
 		})
 		checkErr("create test user", err)
 	}
