@@ -42,10 +42,11 @@ func init() {
 	symmetricCryptoLoadTestCmd.PersistentFlags().StringVar(&keyID, "kid", "", "Key ID to use for symmetric crypto")
 	symmetricCryptoLoadTestCmd.PersistentFlags().BoolVar(&decryptOpt, "decrypt", false, "Perform decryption instead of encryption")
 	symmetricCryptoLoadTestCmd.PersistentFlags().StringVar(&cipherModeStr, "mode", "CBC", "Cipher mode used for encryption/decryption, support: CBC, GCM, FPE")
-	cipherMode = validateCipherMode(cipherModeStr)
 }
 
 func symmetricCryptoLoadTest() {
+	cipherMode = validateCipherMode(cipherModeStr)
+
 	// get basic info of the given sobject
 	key := GetSobject(&keyID)
 
@@ -75,15 +76,19 @@ func symmetricCryptoLoadTest() {
 	}
 
 	// construct test name
-	name := "symmetric encryption"
+	operation := "symmetric encryption"
 	if decryptOpt {
-		name = "symmetric decryption"
+		operation = "symmetric decryption"
 	}
-	name += " " + string(cipherMode)
+	session := "without session"
 	if createSession {
-		name += " with session"
+		session = "with session"
 	}
-	name = fmt.Sprintf("%s %d %s", key.ObjType, *key.KeySize, name)
+	hiVolume := ""
+	if key.KeyOps&sdkms.KeyOperationsHighvolume == sdkms.KeyOperationsHighvolume {
+		hiVolume = "High Volume "
+	}
+	name := fmt.Sprintf("%s%s %d %s %s %s", hiVolume, key.ObjType, *key.KeySize, cipherModeStr, operation, session)
 
 	// start the load test
 	loadTest(name, setup, test, cleanup)
