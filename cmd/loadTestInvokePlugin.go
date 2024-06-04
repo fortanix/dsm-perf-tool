@@ -78,7 +78,7 @@ func invokePluginLoadTest() {
 	}
 
 	// construct test name
-	name := fmt.Sprintf("invoke plugin '%s'", plugin.Name)
+	name := fmt.Sprintf("Invoke plugin '%s'", plugin.Name)
 	if createSession {
 		name += " with session"
 	}

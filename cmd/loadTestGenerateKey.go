@@ -48,22 +48,20 @@ func loadTestGenerateKey() {
 		}
 	}
 	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
-		if createSession {
-			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
-			if err != nil {
-				return nil, err
-			}
+		// Key generation always needs to create session
+		_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
+		if err != nil {
+			return nil, err
 		}
-		client.Auth = sdkms.APIKey(apiKey)
-
 		// Create one example key to fill the test config
-		if testConfig.Sobject != nil {
+		if testConfig.Sobject == nil {
 			key, _, _, err := generateKey(client)
 			if err != nil {
 				return nil, err
 			}
 			testConfig.Sobject = key
 		}
+
 		return nil, nil
 	}
 	cleanup := func(client *sdkms.Client) {
@@ -77,10 +75,11 @@ func loadTestGenerateKey() {
 		_, d, p, err := generateKey(client)
 		return nil, d, p, err
 	}
-	name := fmt.Sprintf("generate %v key", keyType)
+	name := fmt.Sprintf("Generate %v key", keyType)
 	if keyType == objectTypeAES || keyType == objectTypeRSA {
 		name += fmt.Sprintf(" (%v bits)", keySize)
 	}
+	name += " with session"
 	loadTest(name, setup, test, cleanup)
 }
 
