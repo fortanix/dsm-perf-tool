@@ -1,0 +1,46 @@
+name: golangci-lint
+
+on:
+  push:
+    paths:
+        - ".github/workflows/lint.yml"
+        - "go.mod"
+        - "go.sum"
+        - "**.go"
+        - ".golangci.yaml"
+    branches: [ "master" ]
+  pull_request:
+    paths:
+      - ".github/workflows/lint.yml"
+      - "go.mod"
+      - "go.sum"
+      - "**.go"
+      - ".golangci.yaml"
+  # This CI will be triigerred on any merge_group events
+  merge_group:
+
+permissions:
+  contents: read
+  # Optional: Allow write access to checks to allow the action to annotate code in the PR.
+  checks: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - run: go get -t ./...
+
+      - name: Run linters
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.57.2
+          skip-pkg-cache: true
+          skip-build-cache: true
