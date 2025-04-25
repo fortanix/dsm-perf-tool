@@ -39,7 +39,7 @@ func init() {
 
 func getVersion() {
 	client := sdkmsClient()
-	v, err := client.Version(context.Background())
+	v, err := client.Version(context.Background(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func getVersion() {
 			time.Sleep(getVersionDelay)
 		}
 		t0 := time.Now()
-		v, err := client.Version(context.Background())
+		v, err := client.Version(context.Background(), nil)
 		d := time.Since(t0)
 		durations = append(durations, d)
 		if err != nil {

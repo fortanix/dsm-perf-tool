@@ -60,7 +60,7 @@ func testSetup() {
 	if createTestUser {
 		_, err := client.SignupUser(ctx, sdkms.SignupRequest{
 			UserEmail:         testUserEmail,
-			UserPassword:      testUserPassword,
+			UserPassword:      sdkms.ZeroizedString(testUserPassword),
 			RecaptchaResponse: someString("dummy recaptcha"),
 		})
 		checkErr("create test user", err)

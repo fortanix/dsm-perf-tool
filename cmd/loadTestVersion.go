@@ -37,7 +37,7 @@ func versionLoadTest() {
 		ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
 
 		t0 := time.Now()
-		_, err := client.Version(ctx)
+		_, err := client.Version(ctx, nil)
 		d := time.Since(t0)
 
 		header := ctx.Value(responseHeaderKey).(http.Header)
