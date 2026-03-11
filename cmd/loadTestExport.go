@@ -31,13 +31,8 @@ func init() {
 }
 
 func exportLoadTest() {
-	// get basic info of the given sobject
-	key := GetSobject(&keyID)
-
 	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
-		if testConfig.Sobject != nil {
-			testConfig.Sobject = key
-		}
+
 		if createSession {
 			_, err := client.AuthenticateWithAPIKey(context.Background(), apiKey)
 			return nil, err
