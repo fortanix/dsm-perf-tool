@@ -44,7 +44,7 @@ func signVerifyLoadTest() {
 	key := GetSobject(&signKeyID)
 
 	setup := func(client *sdkms.Client, testConfig *TestConfig) (interface{}, error) {
-		if testConfig.Sobject != nil {
+		if testConfig.Sobject == nil {
 			testConfig.Sobject = key
 		}
 		if createSession {
