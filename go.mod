@@ -11,7 +11,7 @@ go 1.18
 require (
 	github.com/fortanix/sdkms-client-go v0.4.1
 	github.com/google/uuid v1.6.0
-	github.com/montanaflynn/stats v0.7.1
+	github.com/montanaflynn/stats v0.8.2
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 )
