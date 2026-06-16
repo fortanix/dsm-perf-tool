@@ -156,7 +156,7 @@ func testSetup() {
 		GroupID: someString(group.GroupID),
 		ObjType: convertObjectType(objectTypeAES),
 		KeySize: someUint32(256),
-		KeyOps:  someKeyOps(sdkms.KeyOperationsEncrypt | sdkms.KeyOperationsDecrypt | sdkms.KeyOperationsWrapkey | sdkms.KeyOperationsUnwrapkey | sdkms.KeyOperationsHighvolume),
+		KeyOps:  someKeyOps(sdkms.KeyOperationsEncrypt | sdkms.KeyOperationsDecrypt | sdkms.KeyOperationsHighvolume),
 		Fpe: &sdkms.FpeOptions{
 			Basic: &sdkms.FpeOptionsBasic{
 				Radix:     16,
@@ -186,7 +186,7 @@ func testSetup() {
 		GroupID: someString(group.GroupID),
 		ObjType: convertObjectType(objectTypeAES),
 		KeySize: someUint32(192),
-		KeyOps:  someKeyOps(sdkms.KeyOperationsEncrypt | sdkms.KeyOperationsDecrypt | sdkms.KeyOperationsWrapkey | sdkms.KeyOperationsUnwrapkey | sdkms.KeyOperationsHighvolume),
+		KeyOps:  someKeyOps(sdkms.KeyOperationsEncrypt | sdkms.KeyOperationsDecrypt | sdkms.KeyOperationsHighvolume),
 		Fpe: &sdkms.FpeOptions{
 			Basic: &sdkms.FpeOptionsBasic{
 				Radix:     16,
