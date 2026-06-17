@@ -9,7 +9,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -91,13 +90,13 @@ func generateKey(client *sdkms.Client) (*sdkms.Sobject, time.Duration, profiling
 		EllipticCurve: ellipticCurveFor(keyType),
 	}
 
-	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+	ctx := sdkms.IncludeRawResponse(context.Background())
 
 	t0 := time.Now()
 	key, err := client.CreateSobject(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value(responseHeaderKey).(http.Header)
+	header := sdkms.GetRawResponse(ctx).Header
 	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return key, d, p, err

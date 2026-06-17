@@ -9,7 +9,7 @@ module github.com/fortanix/dsm-perf-tool
 go 1.18
 
 require (
-	github.com/fortanix/sdkms-client-go v0.4.1
+	github.com/fortanix/sdkms-client-go v0.4.2
 	github.com/google/uuid v1.6.0
 	github.com/montanaflynn/stats v0.9.0
 	github.com/spf13/cobra v1.10.2

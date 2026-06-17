@@ -9,7 +9,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -88,13 +87,13 @@ func sign(client *sdkms.Client) (*sdkms.SignResponse, time.Duration, profilingMe
 		Key:     sdkms.SobjectByID(signKeyID),
 	}
 
-	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+	ctx := sdkms.IncludeRawResponse(context.Background())
 
 	t0 := time.Now()
 	res, err := client.Sign(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value(responseHeaderKey).(http.Header)
+	header := sdkms.GetRawResponse(ctx).Header
 	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
@@ -108,13 +107,13 @@ func verify(client *sdkms.Client, sr sdkms.SignResponse) (*sdkms.VerifyResponse,
 		Data:      someBlob([]byte(SIGN_EXAMPLE_DATA)),
 	}
 
-	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+	ctx := sdkms.IncludeRawResponse(context.Background())
 
 	t0 := time.Now()
 	res, err := client.Verify(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value(responseHeaderKey).(http.Header)
+	header := sdkms.GetRawResponse(ctx).Header
 	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err

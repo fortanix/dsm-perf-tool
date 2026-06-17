@@ -186,12 +186,6 @@ func GetSobject(kid *string) *sdkms.Sobject {
 	return key
 }
 
-type httpHeaderKey string
-
-const (
-	responseHeaderKey httpHeaderKey = "ResponseHeader"
-)
-
 func toJsonStr(v any) string {
 	val, err := json.Marshal(v)
 	if err != nil {
