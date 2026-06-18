@@ -32,7 +32,7 @@ type TestConfig struct {
 	CreateSession  bool             `json:"create_session" yaml:"create_session"`
 	WarmupDuration time.Duration    `json:"warmup_duration" yaml:"warmup_duration"`
 	TestDuration   time.Duration    `json:"test_duration" yaml:"test_duration"`
-	TargetQPS      uint             `json:"target_qps" yaml:"target_qps"`
+	TargetQPS      float64          `json:"target_qps" yaml:"target_qps"`
 	Sobject        *sdkms.Sobject   `json:"sobject" yaml:"sobject"`
 	Plugin         *sdkms.Plugin    `json:"plugin" yaml:"plugin"`
 	PluginInput    *json.RawMessage `json:"plugin_input" yaml:"plugin_input"`
@@ -47,7 +47,7 @@ func (tc *TestConfig) Print(w io.Writer) {
 	fmt.Fprintf(w, "CreateSession:  %t\n", tc.CreateSession)
 	fmt.Fprintf(w, "WarmupDuration: %s\n", tc.WarmupDuration)
 	fmt.Fprintf(w, "TestDuration:   %s\n", tc.TestDuration)
-	fmt.Fprintf(w, "TargetQPS:      %d\n", tc.TargetQPS)
+	fmt.Fprintf(w, "TargetQPS:      %v\n", tc.TargetQPS)
 	fmt.Fprintf(w, "Sobject:        %s\n", toJsonStr(tc.Sobject))
 	fmt.Fprintf(w, "Plugin:         %s\n", toJsonStr(tc.Plugin))
 	fmt.Fprintf(w, "PluginInput:    %s\n", toJsonStr(tc.PluginInput))
@@ -126,7 +126,7 @@ func StatisticFromFloat64Data(data stats.Float64Data, totalDuration *time.Durati
 func (st *Statistic) Print(w io.Writer) {
 	fmt.Fprintf(w, "ct: %d, ", st.QueryNumber)
 	if st.QPS != nil {
-		fmt.Fprintf(w, "qps: %.3f, ", *st.QPS)
+		fmt.Fprintf(w, "QPS: %.3f, ", *st.QPS)
 	}
 	fmt.Fprintf(w, "AVG: %.3fms, ", st.Avg/1e6)
 	fmt.Fprintf(w, "min: %.3fms, ", st.Min/1e6)
