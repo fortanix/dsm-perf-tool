@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -90,13 +89,13 @@ func invokePluginLoadTest() {
 func invokePlugin(client *sdkms.Client) (*sdkms.PluginOutput, time.Duration, profilingMetricStr, error) {
 	input := json.RawMessage(pluginInput)
 
-	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+	ctx := sdkms.IncludeRawResponse(context.Background())
 
 	t0 := time.Now()
 	res, err := client.InvokePlugin(ctx, pluginID, &input)
 	d := time.Since(t0)
 
-	header := ctx.Value(responseHeaderKey).(http.Header)
+	header := sdkms.GetRawResponse(ctx).Header
 	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err

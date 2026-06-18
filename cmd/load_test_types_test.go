@@ -30,7 +30,7 @@ func newRandomStatistic() *Statistic {
 
 	return &Statistic{
 		QueryNumber: uint(queryNumber),
-		QPS:         qps,
+		QPS:         &qps,
 		Min:         min,
 		Max:         max,
 		Avg:         avg,

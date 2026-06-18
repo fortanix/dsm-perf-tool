@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -103,13 +102,13 @@ func encrypt(client *sdkms.Client) (*sdkms.EncryptResponse, time.Duration, profi
 		TagLen: tagLenFor(cipherMode),
 	}
 
-	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+	ctx := sdkms.IncludeRawResponse(context.Background())
 
 	t0 := time.Now()
 	res, err := client.Encrypt(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value(responseHeaderKey).(http.Header)
+	header := sdkms.GetRawResponse(ctx).Header
 	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err
@@ -125,13 +124,13 @@ func decrypt(client *sdkms.Client, c sdkms.EncryptResponse) (*sdkms.DecryptRespo
 		Tag:    c.Tag,
 	}
 
-	ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+	ctx := sdkms.IncludeRawResponse(context.Background())
 
 	t0 := time.Now()
 	res, err := client.Decrypt(ctx, req)
 	d := time.Since(t0)
 
-	header := ctx.Value(responseHeaderKey).(http.Header)
+	header := sdkms.GetRawResponse(ctx).Header
 	p := profilingMetricStr(header.Get("Profiling-Data"))
 
 	return res, d, p, err

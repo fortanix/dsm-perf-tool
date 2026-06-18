@@ -50,6 +50,7 @@ func getProfilingMetrics(dataArr profilingDataArr) *ProfilingStatistics {
 	var operateData stats.Float64Data
 	var dbFlushData stats.Float64Data
 	var totalData stats.Float64Data
+	additional := make(map[string]stats.Float64Data)
 	for _, data := range dataArr {
 		inQueueData = append(inQueueData, float64(data.InQueue))
 		parseRequestData = append(parseRequestData, float64(data.ParseRequest))
@@ -59,6 +60,11 @@ func getProfilingMetrics(dataArr profilingDataArr) *ProfilingStatistics {
 		operateData = append(operateData, float64(data.Operate))
 		dbFlushData = append(dbFlushData, float64(data.DbFlush))
 		totalData = append(totalData, float64(data.Total))
+		processAdditionalProfilingData("", data.AdditionalProfilingData, additional)
+	}
+	additionalStatistics := make(map[string]Statistic)
+	for key, value := range additional {
+		additionalStatistics[key] = *StatisticFromFloat64Data(value, nil)
 	}
 	return &ProfilingStatistics{
 		InQueue:       *StatisticFromFloat64Data(inQueueData, nil),
@@ -69,6 +75,15 @@ func getProfilingMetrics(dataArr profilingDataArr) *ProfilingStatistics {
 		Operate:       *StatisticFromFloat64Data(operateData, nil),
 		DbFlush:       *StatisticFromFloat64Data(dbFlushData, nil),
 		Total:         *StatisticFromFloat64Data(totalData, nil),
+		Additional:    additionalStatistics,
+	}
+}
+
+func processAdditionalProfilingData(path string, input []additionalProfilingData, output map[string]stats.Float64Data) {
+	for _, item := range input {
+		key := path + "/" + item.Action
+		output[key] = append(output[key], float64(item.TookNs))
+		processAdditionalProfilingData(key, item.SubActions, output)
 	}
 }
 

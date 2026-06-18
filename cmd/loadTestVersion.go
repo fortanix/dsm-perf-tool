@@ -8,7 +8,6 @@ package cmd
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -34,13 +33,13 @@ func versionLoadTest() {
 	}
 	cleanup := func(client *sdkms.Client) {}
 	test := func(client *sdkms.Client, stage loadTestStage, arg interface{}) (interface{}, time.Duration, profilingMetricStr, error) {
-		ctx := context.WithValue(context.Background(), responseHeaderKey, http.Header{})
+		ctx := sdkms.IncludeRawResponse(context.Background())
 
 		t0 := time.Now()
 		_, err := client.Version(ctx, nil)
 		d := time.Since(t0)
 
-		header := ctx.Value(responseHeaderKey).(http.Header)
+		header := sdkms.GetRawResponse(ctx).Header
 		p := profilingMetricStr(header.Get("Profiling-Data"))
 
 		return nil, d, p, err

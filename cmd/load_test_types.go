@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"time"
 
 	"github.com/fortanix/sdkms-client-go/sdkms"
@@ -67,20 +66,24 @@ func (tr *TestResult) Print(w io.Writer) {
 	fmt.Fprintf(w, "Test:               %s\n", tr.Test.String())
 	fmt.Fprintf(w, "ActualTestDuration: %s\n", tr.ActualTestDuration)
 	fmt.Fprintf(w, "SendDuration:       %s\n", tr.ActualTestDuration)
+	if tr.ProfilingResults != nil {
+		fmt.Fprintf(w, "Profiling data:\n")
+		tr.ProfilingResults.Print(w)
+	}
 }
 
 // Statistic represents the performance metrics of a load test.
 type Statistic struct {
-	QueryNumber uint    `json:"query_number" yaml:"query_number"` // Number of queries executed
-	QPS         float64 `json:"qps" yaml:"qps"`                   // Queries Per Second
-	Avg         float64 `json:"avg" yaml:"avg"`                   // Average response time in nanoseconds
-	Min         float64 `json:"min" yaml:"min"`                   // Minimum response time in nanoseconds
-	Max         float64 `json:"max" yaml:"max"`                   // Maximum response time in nanoseconds
-	P50         float64 `json:"p50" yaml:"p50"`                   // 50th percentile (median) response time in nanoseconds
-	P75         float64 `json:"p75" yaml:"p75"`                   // 75th percentile response time in nanoseconds
-	P90         float64 `json:"p90" yaml:"p90"`                   // 90th percentile response time in nanoseconds
-	P95         float64 `json:"p95" yaml:"p95"`                   // 95th percentile response time in nanoseconds
-	P99         float64 `json:"p99" yaml:"p99"`                   // 99th percentile response time in nanoseconds
+	QueryNumber uint     `json:"query_number" yaml:"query_number"`   // Number of queries executed
+	QPS         *float64 `json:"qps,omitempty" yaml:"qps,omitempty"` // Queries Per Second
+	Avg         float64  `json:"avg" yaml:"avg"`                     // Average response time in nanoseconds
+	Min         float64  `json:"min" yaml:"min"`                     // Minimum response time in nanoseconds
+	Max         float64  `json:"max" yaml:"max"`                     // Maximum response time in nanoseconds
+	P50         float64  `json:"p50" yaml:"p50"`                     // 50th percentile (median) response time in nanoseconds
+	P75         float64  `json:"p75" yaml:"p75"`                     // 75th percentile response time in nanoseconds
+	P90         float64  `json:"p90" yaml:"p90"`                     // 90th percentile response time in nanoseconds
+	P95         float64  `json:"p95" yaml:"p95"`                     // 95th percentile response time in nanoseconds
+	P99         float64  `json:"p99" yaml:"p99"`                     // 99th percentile response time in nanoseconds
 }
 
 func StatisticFromDurations(times []time.Duration, duration time.Duration) *Statistic {
@@ -101,9 +104,10 @@ func StatisticFromFloat64Data(data stats.Float64Data, totalDuration *time.Durati
 	p90, _ := data.Percentile(90)
 	p95, _ := data.Percentile(95)
 	p99, _ := data.Percentile(99)
-	qps := math.NaN()
+	var qps *float64 = nil
 	if totalDuration != nil {
-		qps = float64(queryNumber) / totalDuration.Seconds()
+		q := float64(queryNumber) / totalDuration.Seconds()
+		qps = &q
 	}
 	return &Statistic{
 		QueryNumber: queryNumber,
@@ -120,16 +124,18 @@ func StatisticFromFloat64Data(data stats.Float64Data, totalDuration *time.Durati
 }
 
 func (st *Statistic) Print(w io.Writer) {
-	fmt.Fprintf(w, "QueryNumber: %d, ", st.QueryNumber)
-	fmt.Fprintf(w, "QPS: %.3f, ", st.QPS)
-	fmt.Fprintf(w, "Avg: %.3fms, ", st.Avg/1e6)
-	fmt.Fprintf(w, "Min: %.3fms, ", st.Min/1e6)
-	fmt.Fprintf(w, "Max: %.3fms, ", st.Max/1e6)
-	fmt.Fprintf(w, "P50: %.3fms, ", st.P50/1e6)
-	fmt.Fprintf(w, "P75: %.3fms, ", st.P75/1e6)
-	fmt.Fprintf(w, "P90: %.3fms, ", st.P90/1e6)
-	fmt.Fprintf(w, "P95: %.3fms, ", st.P95/1e6)
-	fmt.Fprintf(w, "P99: %.3fms", st.P99/1e6)
+	fmt.Fprintf(w, "ct: %d, ", st.QueryNumber)
+	if st.QPS != nil {
+		fmt.Fprintf(w, "qps: %.3f, ", *st.QPS)
+	}
+	fmt.Fprintf(w, "AVG: %.3fms, ", st.Avg/1e6)
+	fmt.Fprintf(w, "min: %.3fms, ", st.Min/1e6)
+	fmt.Fprintf(w, "max: %.3fms, ", st.Max/1e6)
+	fmt.Fprintf(w, "p50: %.3fms, ", st.P50/1e6)
+	fmt.Fprintf(w, "p75: %.3fms, ", st.P75/1e6)
+	fmt.Fprintf(w, "p90: %.3fms, ", st.P90/1e6)
+	fmt.Fprintf(w, "p95: %.3fms, ", st.P95/1e6)
+	fmt.Fprintf(w, "p99: %.3fms", st.P99/1e6)
 }
 
 func (st *Statistic) String() string {
@@ -139,25 +145,34 @@ func (st *Statistic) String() string {
 }
 
 type ProfilingStatistics struct {
-	InQueue       Statistic `json:"in_queue" yaml:"in_queue"`
-	ParseRequest  Statistic `json:"parse_request" yaml:"parse_request"`
-	SessionLookup Statistic `json:"session_lookup" yaml:"session_lookup"`
-	ValidateInput Statistic `json:"validate_input" yaml:"validate_input"`
-	CheckAccess   Statistic `json:"check_access" yaml:"check_access"`
-	Operate       Statistic `json:"operate" yaml:"operate"`
-	DbFlush       Statistic `json:"db_flush" yaml:"db_flush"`
-	Total         Statistic `json:"total" yaml:"total"`
+	InQueue       Statistic            `json:"in_queue" yaml:"in_queue"`
+	ParseRequest  Statistic            `json:"parse_request" yaml:"parse_request"`
+	SessionLookup Statistic            `json:"session_lookup" yaml:"session_lookup"`
+	ValidateInput Statistic            `json:"validate_input" yaml:"validate_input"`
+	CheckAccess   Statistic            `json:"check_access" yaml:"check_access"`
+	Operate       Statistic            `json:"operate" yaml:"operate"`
+	DbFlush       Statistic            `json:"db_flush" yaml:"db_flush"`
+	Total         Statistic            `json:"total" yaml:"total"`
+	Additional    map[string]Statistic `json:"additional" yaml:"additional"`
 }
 
 func (ps *ProfilingStatistics) Print(w io.Writer) {
-	fmt.Fprintf(w, "InQueue:       %s\n", ps.InQueue.String())
-	fmt.Fprintf(w, "ParseRequest:  %s\n", ps.ParseRequest.String())
-	fmt.Fprintf(w, "SessionLookup: %s\n", ps.SessionLookup.String())
-	fmt.Fprintf(w, "ValidateInput: %s\n", ps.ValidateInput.String())
-	fmt.Fprintf(w, "CheckAccess:   %s\n", ps.CheckAccess.String())
-	fmt.Fprintf(w, "Operate:       %s\n", ps.Operate.String())
-	fmt.Fprintf(w, "DbFlush:       %s\n", ps.DbFlush.String())
-	fmt.Fprintf(w, "Total:         %s\n", ps.Total.String())
+	maxKeyLen := len("SessionLookup")
+	for key := range ps.Additional {
+		maxKeyLen = Max(maxKeyLen, len(key))
+	}
+	pad := "LEFT"
+	fmt.Fprintf(w, "%s: %s\n", StrPad("InQueue", maxKeyLen, " ", pad), ps.InQueue.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("ParseRequest", maxKeyLen, " ", pad), ps.ParseRequest.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("SessionLookup", maxKeyLen, " ", pad), ps.SessionLookup.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("ValidateInput", maxKeyLen, " ", pad), ps.ValidateInput.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("CheckAccess", maxKeyLen, " ", pad), ps.CheckAccess.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("Operate", maxKeyLen, " ", pad), ps.Operate.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("DbFlush", maxKeyLen, " ", pad), ps.DbFlush.String())
+	fmt.Fprintf(w, "%s: %s\n", StrPad("Total", maxKeyLen, " ", pad), ps.Total.String())
+	for key, value := range ps.Additional {
+		fmt.Fprintf(w, "%s: %s\n", StrPad(key, maxKeyLen, " ", pad), value.String())
+	}
 }
 
 type TestSummaryJsonWriter interface {
@@ -169,12 +184,11 @@ type TestSummaryPlainWriter interface {
 }
 
 func (ts *TestSummary) WritePlain(w io.Writer) error {
-	fmt.Fprintf(w, "-----BEGIN TEST SUMMARY-----\n")
+	fmt.Fprintf(w, "----- Test Results -----\n")
 	fmt.Fprintf(w, "TestTime:       %v\n", ts.TestTime)
 	ts.Config.Print(w)
 	fmt.Fprintf(w, "\n")
 	ts.Result.Print(w)
-	fmt.Fprintf(w, "-----END TEST SUMMARY-----\n")
 	return nil
 }
 
