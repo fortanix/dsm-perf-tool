@@ -17,7 +17,7 @@ import (
 )
 
 // TODO: get rid of global variables, tracking issue: #16
-var queriesPerSecond uint
+var queriesPerSecond float64
 var connections uint
 var warmupDuration time.Duration
 var testDuration time.Duration
@@ -37,7 +37,7 @@ const QPS_PRINT_INTERVAL = 5 * time.Second
 func init() {
 	rootCmd.AddCommand(loadTestCmd)
 
-	loadTestCmd.PersistentFlags().UintVar(&queriesPerSecond, "qps", 10, "Queries per second (QPS)")
+	loadTestCmd.PersistentFlags().Float64Var(&queriesPerSecond, "qps", 10, "Queries per second (QPS)")
 	loadTestCmd.PersistentFlags().UintVarP(&connections, "connections", "c", 10, "Number of concurrent connections")
 	loadTestCmd.PersistentFlags().DurationVarP(&testDuration, "duration", "d", 30*time.Second, "Test duration")
 	loadTestCmd.PersistentFlags().DurationVarP(&warmupDuration, "warmup", "w", 10*time.Second, "Warmup duration")
@@ -175,7 +175,7 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 		<-ticker.C
 		launchWorker()
 	}
-	ticker.Reset(time.Duration(time.Second.Nanoseconds() / int64(queriesPerSecond)))
+	ticker.Reset(time.Duration(float64(time.Second.Nanoseconds()) / queriesPerSecond))
 
 	ready.Wait()
 	t0 := time.Now()
