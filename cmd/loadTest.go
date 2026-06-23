@@ -65,7 +65,7 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 	log.Printf("Target QPS:      %v\n", queriesPerSecond)
 	log.Printf("Connections:     %v\n", connections)
 	log.Printf("Test Duration:   %v\n", testDuration)
-	log.Printf("Warmup Duration: %v\n\n", warmupDuration)
+	log.Printf("Warmup Duration: %v\n", warmupDuration)
 
 	testConfig := TestConfig{
 		TestName:       name,
@@ -85,7 +85,17 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 		p profilingMetricStr
 		s loadTestStage
 	}
-	ticker := time.NewTicker(time.Duration(warmupDuration.Nanoseconds() / int64(connections)))
+	warmupTicker := time.NewTicker(time.Duration(warmupDuration.Nanoseconds() / int64(connections)))
+	tokens := make(chan time.Time, 100)
+	tokenProducer := func() {
+		interval := time.Duration(float64(time.Second.Nanoseconds()) / queriesPerSecond)
+		nextTick := time.Now().Add(interval)
+		for {
+			time.Sleep(time.Until(nextTick))
+			tokens <- nextTick
+			nextTick = nextTick.Add(interval)
+		}
+	}
 	start := make(chan struct{})
 	end := make(chan struct{})
 	result := make(chan testMetric, 1000) // buffered channel just in case
@@ -118,14 +128,14 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 				log.Fatalf("Fatal error: %v\n", err)
 			}
 			// ensure TLS is established
-			arg = callTestFunc(time.Time{}, &client, warmupStage, arg)
+			arg = callTestFunc(time.Now(), &client, warmupStage, arg)
 			ready.Done()
 			<-start
 		testLoop:
 			for {
 				select {
-				case t := <-ticker.C:
-					arg = callTestFunc(t, &client, testStage, arg)
+				case <-tokens:
+					arg = callTestFunc(time.Now(), &client, testStage, arg)
 				case <-end:
 					break testLoop
 				}
@@ -141,7 +151,6 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 	var lastTick time.Time
 	var profilingMetricStrArr []profilingMetricStr
 
-	var printQpsWg sync.WaitGroup
 	go func() {
 		defer wg2.Done()
 		var lastPrintQpsTick time.Time
@@ -154,14 +163,11 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 			} else {
 				tests = append(tests, r.d)
 				if r.t.After(lastPrintQpsTick.Add(QPS_PRINT_INTERVAL)) {
-					lastPrintQpsTick = r.t
+					dur := r.t.Sub(lastPrintQpsTick)
 					currentQueryNum := len(tests)
-					printQpsWg.Add(1)
-					go func() {
-						defer printQpsWg.Done()
-						log.Printf("Last %s QPS: %v\n", QPS_PRINT_INTERVAL, float64(currentQueryNum-lastQueryNum)/QPS_PRINT_INTERVAL.Seconds())
-						lastQueryNum = currentQueryNum
-					}()
+					log.Printf("Last %v QPS: %.3f\n", dur.Truncate(time.Millisecond*100), float64(currentQueryNum-lastQueryNum)/dur.Seconds())
+					lastQueryNum = currentQueryNum
+					lastPrintQpsTick = r.t
 				}
 				if r.p != "" {
 					profilingMetricStrArr = append(profilingMetricStrArr, r.p)
@@ -172,12 +178,13 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 	}()
 
 	for i := uint(0); i < connections; i++ {
-		<-ticker.C
+		<-warmupTicker.C
 		launchWorker()
 	}
-	ticker.Reset(time.Duration(float64(time.Second.Nanoseconds()) / queriesPerSecond))
-
+	warmupTicker.Stop()
 	ready.Wait()
+	log.Printf("Warmup completed")
+	go tokenProducer()
 	t0 := time.Now()
 	close(start)
 	var t1 time.Time
@@ -193,8 +200,6 @@ func loadTest(name string, setup setupFunc, test testFunc, cleanup cleanupFunc) 
 	wg1.Wait()
 	close(result)
 	wg2.Wait()
-	ticker.Stop()
-	printQpsWg.Wait()
 
 	sendDuration := lastTick.Sub(t0)
 	testDuration := t1.Sub(t0)
