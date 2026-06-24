@@ -84,6 +84,7 @@ type Statistic struct {
 	P90         float64  `json:"p90" yaml:"p90"`                     // 90th percentile response time in nanoseconds
 	P95         float64  `json:"p95" yaml:"p95"`                     // 95th percentile response time in nanoseconds
 	P99         float64  `json:"p99" yaml:"p99"`                     // 99th percentile response time in nanoseconds
+	Sd          float64  `json:"sd" yaml:"sd"`                       // Standard deviation of response times in nanoseconds
 }
 
 func StatisticFromDurations(times []time.Duration, duration time.Duration) *Statistic {
@@ -104,6 +105,7 @@ func StatisticFromFloat64Data(data stats.Float64Data, totalDuration *time.Durati
 	p90, _ := data.Percentile(90)
 	p95, _ := data.Percentile(95)
 	p99, _ := data.Percentile(99)
+	sd, _ := data.StandardDeviation()
 	var qps *float64 = nil
 	if totalDuration != nil {
 		q := float64(queryNumber) / totalDuration.Seconds()
@@ -120,6 +122,7 @@ func StatisticFromFloat64Data(data stats.Float64Data, totalDuration *time.Durati
 		P90:         p90,
 		P95:         p95,
 		P99:         p99,
+		Sd:          sd,
 	}
 }
 
@@ -135,7 +138,8 @@ func (st *Statistic) Print(w io.Writer) {
 	fmt.Fprintf(w, "p75: %.3fms, ", st.P75/1e6)
 	fmt.Fprintf(w, "p90: %.3fms, ", st.P90/1e6)
 	fmt.Fprintf(w, "p95: %.3fms, ", st.P95/1e6)
-	fmt.Fprintf(w, "p99: %.3fms", st.P99/1e6)
+	fmt.Fprintf(w, "p99: %.3fms, ", st.P99/1e6)
+	fmt.Fprintf(w, "σ: %.3fms", st.Sd/1e6)
 }
 
 func (st *Statistic) String() string {
